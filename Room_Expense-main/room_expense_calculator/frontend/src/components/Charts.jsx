@@ -52,6 +52,10 @@ export default function Charts({ month, room }) {
   const [report, setReport] = useState([])
   const [dailyExpenses, setDailyExpenses] = useState([])
   const [loading, setLoading] = useState(true)
+  const [themeMode, setThemeMode] = useState(() => {
+    if (typeof document === 'undefined') return 'light'
+    return document.body.classList.contains('dark') ? 'dark' : 'light'
+  })
 
   useEffect(() => {
     Promise.all([
@@ -61,6 +65,19 @@ export default function Charts({ month, room }) {
       .then(([rep, daily]) => { setReport(rep); setDailyExpenses(daily) })
       .finally(() => setLoading(false))
   }, [month, room])
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined
+
+    const syncTheme = () => {
+      setThemeMode(document.body.classList.contains('dark') ? 'dark' : 'light')
+    }
+
+    syncTheme()
+    const observer = new MutationObserver(syncTheme)
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
+  }, [])
 
   if (loading) return <div className="loading">Loading charts…</div>
 
@@ -72,22 +89,28 @@ export default function Charts({ month, room }) {
       {
         label: 'Daily',
         data: last6.map((r) => r.daily),
-        backgroundColor: COLORS.daily,
+        backgroundColor: (ctx) => createGradient(ctx, GRADIENT_COLORS.daily),
+        borderColor: 'rgba(59, 130, 246, 0.85)',
+        borderWidth: 1,
       },
       {
         label: 'Fixed',
         data: last6.map((r) => r.fixed),
-        backgroundColor: COLORS.fixed,
+        backgroundColor: (ctx) => createGradient(ctx, GRADIENT_COLORS.fixed),
+        borderColor: 'rgba(16, 185, 129, 0.85)',
+        borderWidth: 1,
       },
       {
         label: 'Shopping',
         data: last6.map((r) => r.shopping),
-        backgroundColor: COLORS.shopping,
+        backgroundColor: (ctx) => createGradient(ctx, GRADIENT_COLORS.shopping),
+        borderColor: 'rgba(249, 115, 22, 0.85)',
+        borderWidth: 1,
       },
     ],
   }
 
-  const isDarkMode = typeof window !== 'undefined' && document.body.classList.contains('dark')
+  const isDarkMode = themeMode === 'dark'
   const chartColor = isDarkMode ? '#f8fafc' : '#111827'
   const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.18)' : 'rgba(31, 41, 55, 0.12)'
   const tooltipTitleColor = isDarkMode ? '#f8fafc' : '#111827'
@@ -132,7 +155,8 @@ export default function Charts({ month, room }) {
     maintainAspectRatio: false,
     color: chartColor,
     animation: { duration: 900, easing: 'easeOutQuart' },
-    layout: { padding: { top: 12, right: 10, left: 10, bottom: 4 } },
+    interaction: { mode: 'index', intersect: false },
+    layout: { padding: { top: 10, right: 10, left: 8, bottom: 4 } },
     plugins: {
       legend: {
         position: 'top',
@@ -151,6 +175,7 @@ export default function Charts({ month, room }) {
         borderColor: isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(15, 23, 42, 0.14)',
         borderWidth: 1,
         padding: 14,
+        displayColors: true,
         callbacks: {
           label: (ctx) => `₹${Number(ctx.parsed.y).toLocaleString('en-IN')}`,
         },
@@ -175,18 +200,19 @@ export default function Charts({ month, room }) {
       x: {
         ticks: {
           color: chartColor,
-          font: { size: 13, weight: '700' },
+          font: { size: 12, weight: '600' },
+          maxRotation: 0,
         },
-        grid: { color: gridColor },
+        grid: { color: gridColor, drawBorder: false },
         border: { color: gridColor },
       },
       y: {
         ticks: {
           callback: (v) => '₹' + v.toLocaleString('en-IN'),
           color: chartColor,
-          font: { size: 13, weight: '700' },
+          font: { size: 12, weight: '600' },
         },
-        grid: { color: gridColor },
+        grid: { color: gridColor, drawBorder: false },
         border: { color: gridColor },
       },
     },
@@ -216,7 +242,8 @@ export default function Charts({ month, room }) {
     maintainAspectRatio: false,
     color: chartColor,
     animation: { duration: 900, easing: 'easeOutQuart' },
-    layout: { padding: { top: 12, right: 10, left: 10, bottom: 4 } },
+    interaction: { mode: 'index', intersect: false },
+    layout: { padding: { top: 10, right: 10, left: 8, bottom: 4 } },
     plugins: {
       legend: {
         position: 'top',
@@ -257,9 +284,10 @@ export default function Charts({ month, room }) {
         stacked: true,
         ticks: {
           color: chartColor,
-          font: { size: 13, weight: '700' },
+          font: { size: 12, weight: '600' },
+          maxRotation: 0,
         },
-        grid: { color: gridColor },
+        grid: { color: gridColor, drawBorder: false },
         border: { color: gridColor },
       },
       y: {
@@ -267,9 +295,9 @@ export default function Charts({ month, room }) {
         ticks: {
           callback: (v) => '₹' + v.toLocaleString('en-IN'),
           color: chartColor,
-          font: { size: 13, weight: '700' },
+          font: { size: 12, weight: '600' },
         },
-        grid: { color: gridColor },
+        grid: { color: gridColor, drawBorder: false },
         border: { color: gridColor },
       },
     },
@@ -324,12 +352,13 @@ export default function Charts({ month, room }) {
     maintainAspectRatio: false,
     color: chartColor,
     animation: { duration: 900, easing: 'easeOutQuad' },
+    layout: { padding: { top: 8, right: 8, left: 8, bottom: 8 } },
     plugins: {
       legend: {
         position: 'bottom',
         labels: {
           color: chartColor,
-          font: { size: 14, weight: '700' },
+          font: { size: 13, weight: '700' },
           usePointStyle: true,
           pointStyle: 'rectRounded',
           padding: 16,
@@ -354,25 +383,52 @@ export default function Charts({ month, room }) {
   return (
     <div className="charts-grid">
       <div className="card chart-card">
-        {last6.length > 0 ? (
-          <Bar data={barData} options={barOptions} plugins={[barValuePlugin]} />
-        ) : (
-          <div className="empty-state"><p>Not enough monthly data for bar chart.</p></div>
-        )}
+        <div className="chart-card-header">
+          <div>
+            <h3 className="chart-card-title">Monthly Expense Breakdown</h3>
+            <p className="chart-card-subtitle">Rounded bars with smooth hover states</p>
+          </div>
+          <span className="chart-card-badge">Bar</span>
+        </div>
+        <div className="chart-shell">
+          {last6.length > 0 ? (
+            <Bar data={barData} options={barOptions} plugins={[barValuePlugin]} />
+          ) : (
+            <div className="empty-state"><p>Not enough monthly data for bar chart.</p></div>
+          )}
+        </div>
       </div>
       <div className="card chart-card">
-        {last6.length > 0 ? (
-          <Line data={lineData} options={lineOptions} />
-        ) : (
-          <div className="empty-state"><p>Not enough monthly data for line chart.</p></div>
-        )}
+        <div className="chart-card-header">
+          <div>
+            <h3 className="chart-card-title">Total Expense Trend</h3>
+            <p className="chart-card-subtitle">Curved lines with a polished tooltip experience</p>
+          </div>
+          <span className="chart-card-badge">Line</span>
+        </div>
+        <div className="chart-shell">
+          {last6.length > 0 ? (
+            <Line data={lineData} options={lineOptions} />
+          ) : (
+            <div className="empty-state"><p>Not enough monthly data for line chart.</p></div>
+          )}
+        </div>
       </div>
-      <div className="card chart-card">
-        {catLabels.length > 0 ? (
-          <Pie data={pieData} options={pieOptions} plugins={[pieLabelPlugin]} />
-        ) : (
-          <div className="empty-state"><p>No daily expenses in {month} for pie chart.</p></div>
-        )}
+      <div className="card chart-card chart-card-wide">
+        <div className="chart-card-header">
+          <div>
+            <h3 className="chart-card-title">Category Distribution</h3>
+            <p className="chart-card-subtitle">Clear percentages and a modern legend layout</p>
+          </div>
+          <span className="chart-card-badge">Pie</span>
+        </div>
+        <div className="chart-shell">
+          {catLabels.length > 0 ? (
+            <Pie data={pieData} options={pieOptions} plugins={[pieLabelPlugin]} />
+          ) : (
+            <div className="empty-state"><p>No daily expenses in {month} for pie chart.</p></div>
+          )}
+        </div>
       </div>
     </div>
   )
