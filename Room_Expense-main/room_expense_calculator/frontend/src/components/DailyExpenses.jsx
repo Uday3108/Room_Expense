@@ -11,7 +11,7 @@ function fmt(n) {
   return '₹' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-export default function DailyExpenses({ month }) {
+export default function DailyExpenses({ month, room, rooms }) {
   const [expenses, setExpenses] = useState([])
   const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -24,7 +24,7 @@ export default function DailyExpenses({ month }) {
   const load = () => {
     setLoading(true)
     Promise.all([
-      getDailyExpenses({ month: filterMonth, category: filterCategory }),
+      getDailyExpenses({ month: filterMonth, room, category: filterCategory }),
       getMembers(),
     ])
       .then(([exp, mem]) => { setExpenses(exp); setMembers(mem) })
@@ -33,7 +33,7 @@ export default function DailyExpenses({ month }) {
   }
 
   useEffect(() => { setFilterMonth(month) }, [month])
-  useEffect(() => { load() }, [filterMonth, filterCategory])
+  useEffect(() => { load() }, [filterMonth, filterCategory, room])
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this expense?')) return
@@ -59,6 +59,8 @@ export default function DailyExpenses({ month }) {
     { name: 'amount', label: 'Amount (₹)', type: 'number', required: true, min: 0.01, step: 0.01 },
     { name: 'paid_by', label: 'Paid By', type: 'select', required: true,
       options: members.filter(m => m.is_active).map(m => ({ value: m.name, label: m.name })) },
+    { name: 'room', label: 'Room', type: 'select', required: true,
+      options: rooms.map((r) => ({ value: r, label: r })) },
     { name: 'category', label: 'Category', type: 'select', required: true,
       options: CATEGORIES.map(c => ({ value: c, label: c })) },
     { name: 'description', label: 'Description (optional)', type: 'text' },
@@ -135,7 +137,7 @@ export default function DailyExpenses({ month }) {
         <ExpenseForm
           title={editItem ? 'Edit Daily Expense' : 'Add Daily Expense'}
           fields={fields}
-          initial={editItem}
+          initial={editItem ?? { room }}
           onSubmit={handleSubmit}
           onClose={() => { setShowForm(false); setEditItem(null) }}
         />

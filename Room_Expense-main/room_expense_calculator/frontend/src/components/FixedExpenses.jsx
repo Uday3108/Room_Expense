@@ -11,7 +11,7 @@ function fmt(n) {
   return '₹' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-export default function FixedExpenses({ month }) {
+export default function FixedExpenses({ month, room, rooms }) {
   const [expenses, setExpenses] = useState([])
   const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -24,7 +24,7 @@ export default function FixedExpenses({ month }) {
   const load = () => {
     setLoading(true)
     Promise.all([
-      getFixedExpenses({ month: filterMonth, expense_type: filterType }),
+      getFixedExpenses({ month: filterMonth, room, expense_type: filterType }),
       getMembers(),
     ])
       .then(([exp, mem]) => { setExpenses(exp); setMembers(mem) })
@@ -33,7 +33,7 @@ export default function FixedExpenses({ month }) {
   }
 
   useEffect(() => { setFilterMonth(month) }, [month])
-  useEffect(() => { load() }, [filterMonth, filterType])
+  useEffect(() => { load() }, [filterMonth, filterType, room])
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this expense?')) return
@@ -66,6 +66,8 @@ export default function FixedExpenses({ month }) {
     { name: 'amount', label: 'Amount (₹)', type: 'number', required: true, min: 0.01, step: 0.01 },
     { name: 'paid_by', label: 'Paid By', type: 'select', required: true,
       options: paidByOptions },
+    { name: 'room', label: 'Room', type: 'select', required: true,
+      options: rooms.map((r) => ({ value: r, label: r })) },
     { name: 'expense_type', label: 'Expense Type', type: 'select', required: true,
       options: EXPENSE_TYPES.map(t => ({ value: t, label: t })) },
   ]
@@ -139,7 +141,7 @@ export default function FixedExpenses({ month }) {
         <ExpenseForm
           title={editItem ? 'Edit Fixed Expense' : 'Add Fixed Expense'}
           fields={fields}
-          initial={editItem}
+          initial={editItem ?? { room }}
           onSubmit={handleSubmit}
           onClose={() => { setShowForm(false); setEditItem(null) }}
         />

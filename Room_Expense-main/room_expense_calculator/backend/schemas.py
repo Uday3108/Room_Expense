@@ -24,6 +24,7 @@ class DailyExpenseCreate(BaseModel):
     date: date
     amount: float
     paid_by: str
+    room: str = "Room 1"
     category: str
     description: Optional[str] = None
 
@@ -32,6 +33,7 @@ class DailyExpenseUpdate(BaseModel):
     date: Optional[date] = None
     amount: Optional[float] = None
     paid_by: Optional[str] = None
+    room: Optional[str] = None
     category: Optional[str] = None
     description: Optional[str] = None
 
@@ -41,6 +43,7 @@ class DailyExpenseOut(BaseModel):
     date: date
     amount: float
     paid_by: str
+    room: str
     category: str
     description: Optional[str] = None
 
@@ -53,6 +56,7 @@ class FixedExpenseCreate(BaseModel):
     date: date
     amount: float
     paid_by: str
+    room: str = "Room 1"
     expense_type: str
 
 
@@ -60,6 +64,7 @@ class FixedExpenseUpdate(BaseModel):
     date: Optional[date] = None
     amount: Optional[float] = None
     paid_by: Optional[str] = None
+    room: Optional[str] = None
     expense_type: Optional[str] = None
 
 
@@ -68,6 +73,7 @@ class FixedExpenseOut(BaseModel):
     date: date
     amount: float
     paid_by: str
+    room: str
     expense_type: str
 
     model_config = {"from_attributes": True}
@@ -79,6 +85,7 @@ class ShoppingExpenseCreate(BaseModel):
     date: date
     amount: float
     paid_by: str
+    room: str = "Room 1"
     store_name: str
     description: Optional[str] = None
 
@@ -87,6 +94,7 @@ class ShoppingExpenseUpdate(BaseModel):
     date: Optional[date] = None
     amount: Optional[float] = None
     paid_by: Optional[str] = None
+    room: Optional[str] = None
     store_name: Optional[str] = None
     description: Optional[str] = None
 
@@ -96,6 +104,7 @@ class ShoppingExpenseOut(BaseModel):
     date: date
     amount: float
     paid_by: str
+    room: str
     store_name: str
     description: Optional[str] = None
 
@@ -109,6 +118,22 @@ class SettlementItem(BaseModel):
     to_member: str
     amount: float
 
+# ── Room ───────────────────────────────────────────────────────────────────────
+
+class RoomCreate(BaseModel):
+    name: str
+
+
+class RoomUpdate(BaseModel):
+    name: str
+
+
+class RoomOut(BaseModel):
+    id: int
+    name: str
+    is_active: bool
+
+    model_config = {"from_attributes": True}
 
 # ── Dashboard ────────────────────────────────────────────────────────────────
 

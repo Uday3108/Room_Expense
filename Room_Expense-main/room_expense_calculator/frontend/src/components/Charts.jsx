@@ -48,19 +48,19 @@ const CAT_COLORS = [
 const LINE_COLOR_LIGHT = '#2563eb'
 const LINE_COLOR_DARK = '#93c5fd'
 
-export default function Charts({ month }) {
+export default function Charts({ month, room }) {
   const [report, setReport] = useState([])
   const [dailyExpenses, setDailyExpenses] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     Promise.all([
-      getMonthlyReport(),
-      getDailyExpenses({ month }),
+      getMonthlyReport(room),
+      getDailyExpenses({ month, room }),
     ])
       .then(([rep, daily]) => { setReport(rep); setDailyExpenses(daily) })
       .finally(() => setLoading(false))
-  }, [month])
+  }, [month, room])
 
   if (loading) return <div className="loading">Loading charts…</div>
 

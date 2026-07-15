@@ -7,7 +7,7 @@ function fmt(n) {
   return '₹' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-export default function Dashboard({ month }) {
+export default function Dashboard({ month, room }) {
   const [data, setData] = useState(null)
   const [members, setMembers] = useState([])
   const [memberName, setMemberName] = useState('')
@@ -20,7 +20,7 @@ export default function Dashboard({ month }) {
   const loadDashboard = () => {
     setLoading(true)
     setError(null)
-    getDashboard(month)
+    getDashboard(month, room)
       .then(setData)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
@@ -38,7 +38,7 @@ export default function Dashboard({ month }) {
   useEffect(() => {
     loadDashboard()
     loadMembers()
-  }, [month])
+  }, [month, room])
 
   if (loading) return <div className="loading">Loading dashboard…</div>
   if (error)   return <div className="error-msg">{error}</div>
@@ -103,10 +103,10 @@ export default function Dashboard({ month }) {
           </div>
 
           <div className="stat-card stat-success">
-            <div className="stat-card-icon">💰</div>
+            <div className="stat-card-icon">�</div>
             <div>
-              <div className="stat-card-title">Unsettled Total</div>
-              <div className="stat-card-value">{fmt(unsettledTotal)}</div>
+              <div className="stat-card-title">Selected Room</div>
+              <div className="stat-card-value">{room}</div>
             </div>
           </div>
 
@@ -262,7 +262,7 @@ export default function Dashboard({ month }) {
         </div>
       </section>
 
-      <Charts month={month} />
+      <Charts month={month} room={room} />
     </div>
   )
 }

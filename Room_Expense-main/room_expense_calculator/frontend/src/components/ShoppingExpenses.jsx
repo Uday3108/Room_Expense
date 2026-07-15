@@ -11,7 +11,7 @@ function fmt(n) {
   return '₹' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-export default function ShoppingExpenses({ month }) {
+export default function ShoppingExpenses({ month, room, rooms }) {
   const [expenses, setExpenses] = useState([])
   const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -23,7 +23,7 @@ export default function ShoppingExpenses({ month }) {
   const load = () => {
     setLoading(true)
     Promise.all([
-      getShoppingExpenses({ month: filterMonth }),
+      getShoppingExpenses({ month: filterMonth, room }),
       getMembers(),
     ])
       .then(([exp, mem]) => { setExpenses(exp); setMembers(mem) })
@@ -32,7 +32,7 @@ export default function ShoppingExpenses({ month }) {
   }
 
   useEffect(() => { setFilterMonth(month) }, [month])
-  useEffect(() => { load() }, [filterMonth])
+  useEffect(() => { load() }, [filterMonth, room])
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this expense?')) return
@@ -58,6 +58,8 @@ export default function ShoppingExpenses({ month }) {
     { name: 'amount', label: 'Amount (₹)', type: 'number', required: true, min: 0.01, step: 0.01 },
     { name: 'paid_by', label: 'Paid By', type: 'select', required: true,
       options: members.filter(m => m.is_active).map(m => ({ value: m.name, label: m.name })) },
+    { name: 'room', label: 'Room', type: 'select', required: true,
+      options: rooms.map((r) => ({ value: r, label: r })) },
     { name: 'store_name', label: 'Store', type: 'select', required: true,
       options: STORES.map(s => ({ value: s, label: s })) },
     { name: 'description', label: 'Description (optional)', type: 'text' },
@@ -127,7 +129,7 @@ export default function ShoppingExpenses({ month }) {
         <ExpenseForm
           title={editItem ? 'Edit Shopping Expense' : 'Add Shopping Expense'}
           fields={fields}
-          initial={editItem}
+          initial={editItem ?? { room }}
           onSubmit={handleSubmit}
           onClose={() => { setShowForm(false); setEditItem(null) }}
         />

@@ -56,17 +56,38 @@ export const updateShoppingExpense = (id, data) =>
 export const deleteShoppingExpense = (id) =>
   request(`/shopping/${id}`, { method: 'DELETE' })
 
+const buildQuery = (params = {}) => {
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== '')
+  ).toString()
+  return qs ? `?${qs}` : ''
+}
+
 // ── Dashboard ─────────────────────────────────────────────────────────────────
-export const getDashboard = (month) => {
-  const qs = month ? `?month=${month}` : ''
+export const getDashboard = (month, room) => {
+  const qs = buildQuery({ month, room })
   return request(`/dashboard${qs}`)
 }
 
 // ── Monthly Report ────────────────────────────────────────────────────────────
-export const getMonthlyReport = () => request('/report/monthly')
+export const getMonthlyReport = (room) => {
+  const qs = buildQuery({ room })
+  return request(`/report/monthly${qs}`)
+}
+
+// ── Rooms ─────────────────────────────────────────────────────────────────────
+export const getRooms = () => request('/rooms')
+export const createRoom = (data) => request('/rooms', { method: 'POST', body: JSON.stringify(data) })
+export const updateRoom = (id, data) => request(`/rooms/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+export const deleteRoom = (id) => request(`/rooms/${id}`, { method: 'DELETE' })
 
 // ── Export ────────────────────────────────────────────────────────────────────
-export const downloadExcel = (month) => {
-  const qs = month ? `?month=${month}` : ''
+export const downloadExcel = (month, room) => {
+  const qs = buildQuery({ month, room })
   window.location.href = `${BASE}/export/excel${qs}`
+}
+
+export const clearExpensesByMonth = (month, room) => {
+  const qs = buildQuery({ month, room })
+  return request(`/expenses${qs}`, { method: 'DELETE' })
 }

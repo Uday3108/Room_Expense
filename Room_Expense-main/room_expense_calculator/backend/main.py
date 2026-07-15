@@ -2,13 +2,13 @@ from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
-from sqlalchemy import extract, func
+from sqlalchemy import extract, func, inspect, text
 from typing import Optional
 from datetime import date, datetime
 import calendar
 
 from database import engine, get_db, Base
-from models import Member, DailyExpense, FixedExpense, ShoppingExpense
+from models import Member, Room, DailyExpense, FixedExpense, ShoppingExpense
 import schemas
 from settlement import calculate_settlement
 from export import generate_excel
@@ -17,6 +17,20 @@ from export import generate_excel
 
 Base.metadata.create_all(bind=engine)
 
+def _ensure_room_columns():
+    inspector = inspect(engine)
+    for table_name in ("daily_expenses", "fixed_expenses", "shopping_expenses"):
+        if table_name not in inspector.get_table_names():
+            continue
+        existing_columns = [col["name"] for col in inspector.get_columns(table_name)]
+        if "room" not in existing_columns:
+            with engine.connect() as conn:
+                conn.execute(text(
+                    f'ALTER TABLE {table_name} ADD COLUMN room TEXT NOT NULL DEFAULT "Room 1"'
+                ))
+                conn.commit()
+
+_ensure_room_columns()
 app = FastAPI(title="Room Expense Calculator", version="1.0.0")
 
 app.add_middleware(
@@ -28,16 +42,20 @@ app.add_middleware(
 )
 
 DEFAULT_MEMBERS = ["Uday", "Naveen", "Praveen", "Sandeep", "Srihari", "Arun"]
+DEFAULT_ROOMS = ["Room 1", "Room 2", "Room 3", "Room 4"]
 
 
 @app.on_event("startup")
-def seed_members():
+def seed_data():
     db = next(get_db())
     try:
         if db.query(Member).count() == 0:
             for name in DEFAULT_MEMBERS:
                 db.add(Member(name=name))
-            db.commit()
+        if db.query(Room).count() == 0:
+            for room in DEFAULT_ROOMS:
+                db.add(Room(name=room))
+        db.commit()
     finally:
         db.close()
 
@@ -62,6 +80,60 @@ def _filter_by_month(query, model, year, month):
             extract("month", model.date) == month,
         )
     return query
+
+
+def _filter_by_room(query, model, room):
+    if room:
+        query = query.filter(model.room == room)
+    return query
+
+
+# ── Rooms ────────────────────────────────────────────────────────────────────
+
+@app.get("/api/rooms", response_model=list[schemas.RoomOut])
+def list_rooms(db: Session = Depends(get_db)):
+    return db.query(Room).order_by(Room.name).all()
+
+
+@app.post("/api/rooms", response_model=schemas.RoomOut, status_code=201)
+def create_room(payload: schemas.RoomCreate, db: Session = Depends(get_db)):
+    existing = db.query(Room).filter(Room.name == payload.name).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Room already exists")
+    room = Room(name=payload.name)
+    db.add(room)
+    db.commit()
+    db.refresh(room)
+    return room
+
+
+@app.put("/api/rooms/{room_id}", response_model=schemas.RoomOut)
+def update_room(room_id: int, payload: schemas.RoomUpdate, db: Session = Depends(get_db)):
+    room = db.query(Room).filter(Room.id == room_id).first()
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+    repeat = db.query(Room).filter(Room.name == payload.name, Room.id != room_id).first()
+    if repeat:
+        raise HTTPException(status_code=409, detail="Room name already exists")
+    room.name = payload.name
+    db.commit()
+    db.refresh(room)
+    return room
+
+
+@app.delete("/api/rooms/{room_id}", status_code=204)
+def delete_room(room_id: int, db: Session = Depends(get_db)):
+    room = db.query(Room).filter(Room.id == room_id).first()
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+    exp_exists = any(
+        db.query(model).filter(model.room == room.name).first()
+        for model in (DailyExpense, FixedExpense, ShoppingExpense)
+    )
+    if exp_exists:
+        raise HTTPException(status_code=409, detail="Room has expenses and cannot be deleted")
+    room.is_active = False
+    db.commit()
 
 
 # ── Members ──────────────────────────────────────────────────────────────────
@@ -115,12 +187,14 @@ def delete_member(member_id: int, db: Session = Depends(get_db)):
 @app.get("/api/daily", response_model=list[schemas.DailyExpenseOut])
 def list_daily(
     month: Optional[str] = Query(None),
+    room: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
     year, mon = _parse_month(month)
     q = db.query(DailyExpense)
     q = _filter_by_month(q, DailyExpense, year, mon)
+    q = _filter_by_room(q, DailyExpense, room)
     if category:
         q = q.filter(DailyExpense.category == category)
     return q.order_by(DailyExpense.date.desc()).all()
@@ -165,12 +239,14 @@ def delete_daily(expense_id: int, db: Session = Depends(get_db)):
 @app.get("/api/fixed", response_model=list[schemas.FixedExpenseOut])
 def list_fixed(
     month: Optional[str] = Query(None),
+    room: Optional[str] = Query(None),
     expense_type: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
     year, mon = _parse_month(month)
     q = db.query(FixedExpense)
     q = _filter_by_month(q, FixedExpense, year, mon)
+    q = _filter_by_room(q, FixedExpense, room)
     if expense_type:
         q = q.filter(FixedExpense.expense_type == expense_type)
     return q.order_by(FixedExpense.date.desc()).all()
@@ -215,11 +291,13 @@ def delete_fixed(expense_id: int, db: Session = Depends(get_db)):
 @app.get("/api/shopping", response_model=list[schemas.ShoppingExpenseOut])
 def list_shopping(
     month: Optional[str] = Query(None),
+    room: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
     year, mon = _parse_month(month)
     q = db.query(ShoppingExpense)
     q = _filter_by_month(q, ShoppingExpense, year, mon)
+    q = _filter_by_room(q, ShoppingExpense, room)
     return q.order_by(ShoppingExpense.date.desc()).all()
 
 
@@ -262,6 +340,7 @@ def delete_shopping(expense_id: int, db: Session = Depends(get_db)):
 @app.get("/api/dashboard", response_model=schemas.DashboardOut)
 def get_dashboard(
     month: Optional[str] = Query(None),
+    room: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
     year, mon = _parse_month(month)
@@ -273,6 +352,7 @@ def get_dashboard(
                 extract("year", model.date) == year,
                 extract("month", model.date) == mon,
             )
+        q = _filter_by_room(q, model, room)
         return float(q.scalar())
 
     def paid_by(model):
@@ -285,6 +365,7 @@ def get_dashboard(
                 extract("year", model.date) == year,
                 extract("month", model.date) == mon,
             )
+        q = _filter_by_room(q, model, room)
         return {row[0]: float(row[1]) for row in q.all()}
 
     total_daily = total(DailyExpense)
@@ -315,6 +396,7 @@ def get_dashboard(
                 extract('year', model.date) == year,
                 extract('month', model.date) == mon,
             )
+        q = _filter_by_room(q, model, room)
         for exp in q.all():
             add_payment(exp, totals)
 
@@ -365,17 +447,19 @@ def get_dashboard(
 # ── Monthly Report ────────────────────────────────────────────────────────────
 
 @app.get("/api/report/monthly", response_model=list[schemas.MonthlyReportItem])
-def monthly_report(db: Session = Depends(get_db)):
+def monthly_report(
+    room: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
     def monthly_totals(model):
-        rows = (
-            db.query(
-                extract("year", model.date).label("year"),
-                extract("month", model.date).label("month"),
-                func.sum(model.amount).label("total"),
-            )
-            .group_by("year", "month")
-            .all()
+        q = db.query(
+            extract("year", model.date).label("year"),
+            extract("month", model.date).label("month"),
+            func.sum(model.amount).label("total"),
         )
+        if room:
+            q = q.filter(model.room == room)
+        rows = q.group_by("year", "month").all()
         return {(int(r.year), int(r.month)): float(r.total) for r in rows}
 
     daily_map = monthly_totals(DailyExpense)
@@ -399,12 +483,30 @@ def monthly_report(db: Session = Depends(get_db)):
         )
     return report
 
+# ── Expense Clearing ────────────────────────────────────────────────────────
+@app.delete("/api/expenses", status_code=204)
+def clear_expenses(
+    month: Optional[str] = Query(None),
+    room: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    if not month:
+        raise HTTPException(status_code=400, detail="month query parameter is required")
+    year, mon = _parse_month(month)
+
+    for model in (DailyExpense, FixedExpense, ShoppingExpense):
+        q = db.query(model)
+        q = _filter_by_month(q, model, year, mon)
+        q = _filter_by_room(q, model, room)
+        q.delete(synchronize_session=False)
+    db.commit()
 
 # ── Excel Export ──────────────────────────────────────────────────────────────
 
 @app.get("/api/export/excel")
 def export_excel(
     month: Optional[str] = Query(None),
+    room: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
     year, mon = _parse_month(month)
@@ -416,6 +518,7 @@ def export_excel(
                 extract("year", model.date) == year,
                 extract("month", model.date) == mon,
             )
+        q = _filter_by_room(q, model, room)
         return q.order_by(model.date).all()
 
     daily = fetch(DailyExpense)
