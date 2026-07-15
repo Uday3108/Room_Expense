@@ -53,12 +53,19 @@ export default function FixedExpenses({ month }) {
   }
 
   const total = expenses.reduce((s, e) => s + e.amount, 0)
+  const activeMembers = members.filter((m) => m.is_active)
+  const memberShare = activeMembers.length ? total / activeMembers.length : 0
+
+  const paidByOptions = [
+    { value: 'All', label: 'Paid by all (to owner)' },
+    ...members.filter(m => m.is_active).map(m => ({ value: m.name, label: m.name })),
+  ]
 
   const fields = [
     { name: 'date', label: 'Date', type: 'date', required: true },
     { name: 'amount', label: 'Amount (₹)', type: 'number', required: true, min: 0.01, step: 0.01 },
     { name: 'paid_by', label: 'Paid By', type: 'select', required: true,
-      options: members.filter(m => m.is_active).map(m => ({ value: m.name, label: m.name })) },
+      options: paidByOptions },
     { name: 'expense_type', label: 'Expense Type', type: 'select', required: true,
       options: EXPENSE_TYPES.map(t => ({ value: t, label: t })) },
   ]
@@ -82,8 +89,11 @@ export default function FixedExpenses({ month }) {
           <option value="">All Types</option>
           {EXPENSE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
-        <span style={{ marginLeft: 'auto', fontWeight: 600, color: 'var(--primary)' }}>
+        <span style={{ fontWeight: 600, color: 'var(--primary)' }}>
           Total: {fmt(total)}
+        </span>
+        <span style={{ marginLeft: 'auto', fontWeight: 600, color: 'var(--accent)' }}>
+          Per person share: {fmt(memberShare)}
         </span>
       </div>
 

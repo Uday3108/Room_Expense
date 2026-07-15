@@ -1,3 +1,7 @@
+function fmt(n) {
+  return '₹' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
 export default function Settlement({ settlement }) {
   return (
     <div className="card" style={{ marginBottom: 24 }}>
@@ -11,7 +15,7 @@ export default function Settlement({ settlement }) {
               <span className="from">{txn.from_member}</span>
               <span className="arrow">→ pays →</span>
               <span className="to">{txn.to_member}</span>
-              <span className="amt">₹{Number(txn.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <span className="amt">{fmt(txn.amount)}</span>
             </div>
           ))}
         </div>

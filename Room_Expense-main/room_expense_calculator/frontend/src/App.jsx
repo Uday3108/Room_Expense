@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Dashboard from './components/Dashboard.jsx'
 import DailyExpenses from './components/DailyExpenses.jsx'
 import FixedExpenses from './components/FixedExpenses.jsx'
@@ -6,11 +6,11 @@ import ShoppingExpenses from './components/ShoppingExpenses.jsx'
 import MonthlyReport from './components/MonthlyReport.jsx'
 
 const TABS = [
-  { id: 'dashboard',  label: '📊 Dashboard' },
-  { id: 'daily',      label: '🛒 Daily' },
-  { id: 'fixed',      label: '🏠 Fixed' },
-  { id: 'shopping',   label: '🛍️ Shopping' },
-  { id: 'report',     label: '📅 Monthly Report' },
+  { id: 'dashboard',  label: 'Dashboard',  icon: '📊' },
+  { id: 'daily',      label: 'Daily',      icon: '🛒' },
+  { id: 'fixed',      label: 'Fixed',      icon: '🏠' },
+  { id: 'shopping',   label: 'Shopping',   icon: '🛍️' },
+  { id: 'report',     label: 'Report',     icon: '📅' },
 ]
 
 function currentMonth() {
@@ -21,12 +21,29 @@ function currentMonth() {
 export default function App() {
   const [tab, setTab] = useState('dashboard')
   const [month, setMonth] = useState(currentMonth())
+  const [theme, setTheme] = useState('dark')
+
+  useEffect(() => {
+    document.body.classList.remove('light', 'dark')
+    document.body.classList.add(theme)
+  }, [theme])
 
   return (
-    <div className="app-wrapper">
+    <div className={`app-wrapper ${theme}`}>
       <header className="app-header">
-        <h1>🏠 Room Expense Calculator</h1>
+        <div>
+          <p className="eyebrow">Room Expense</p>
+          <h1>Expense Dashboard</h1>
+        </div>
+
         <div className="header-right">
+          <button
+            type="button"
+            className="btn btn-ghost theme-toggle"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          >
+            {theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode'}
+          </button>
           <input
             type="month"
             className="month-select"
@@ -41,10 +58,12 @@ export default function App() {
         {TABS.map((t) => (
           <button
             key={t.id}
+            type="button"
             className={`nav-tab${tab === t.id ? ' active' : ''}`}
             onClick={() => setTab(t.id)}
           >
-            {t.label}
+            <span className="nav-icon">{t.icon}</span>
+            <span>{t.label}</span>
           </button>
         ))}
       </nav>

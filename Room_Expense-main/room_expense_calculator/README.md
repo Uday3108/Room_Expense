@@ -1,6 +1,6 @@
 # 🏠 Room Expense Calculator
 
-A full-stack web application for tracking and settling shared expenses among 5 roommates.
+A full-stack web application for tracking and settling shared expenses among 6 roommates.
 Split bills fairly, visualise spending, and settle debts with the minimum number of transactions.
 
 ---
@@ -107,15 +107,16 @@ Frontend runs at **http://localhost:5173**
 
 ## Default Members
 
-The database is seeded automatically on first startup with 5 members:
+The database is seeded automatically on first startup with 6 members:
 
 | # | Name    |
 |---|---------|
-| 1 | Alice   |
-| 2 | Bob     |
-| 3 | Charlie |
-| 4 | David   |
-| 5 | Eva     |
+| 1 | Uday    |
+| 2 | Naveen  |
+| 3 | Praveen |
+| 4 | Sandeep |
+| 5 | Srihari |
+| 6 | Arun    |
 
 ---
 
@@ -157,7 +158,7 @@ Fixed Expenses:   ₹18,000
 Shopping:         ₹ 5,000
 ──────────────────────────
 Grand Total:      ₹35,000
-Members:          5
+Members:          6
 Per Person Share: ₹ 7,000
 ```
 
@@ -165,18 +166,20 @@ If Alice paid ₹15,000 and everyone else paid ₹5,000:
 
 | Member  | Paid     | Share   | Balance   |
 |---------|----------|---------|-----------|
-| Alice   | ₹15,000  | ₹7,000  | +₹8,000   |
-| Bob     | ₹5,000   | ₹7,000  | −₹2,000   |
-| Charlie | ₹5,000   | ₹7,000  | −₹2,000   |
-| David   | ₹5,000   | ₹7,000  | −₹2,000   |
-| Eva     | ₹5,000   | ₹7,000  | −₹2,000   |
+| Uday    | ₹15,000  | ₹7,000  | +₹8,000   |
+| Naveen  | ₹5,000   | ₹7,000  | −₹2,000   |
+| Praveen | ₹5,000   | ₹7,000  | −₹2,000   |
+| Sandeep | ₹5,000   | ₹7,000  | −₹2,000   |
+| Srihari | ₹5,000   | ₹7,000  | −₹2,000   |
+| Arun    | ₹5,000   | ₹7,000  | −₹2,000   |
 
 Settlement (4 transactions):
 ```
-Bob     → pays → Alice  ₹2,000
-Charlie → pays → Alice  ₹2,000
-David   → pays → Alice  ₹2,000
-Eva     → pays → Alice  ₹2,000
+Naveen  → pays → Uday    ₹2,000
+Praveen → pays → Uday    ₹2,000
+Sandeep → pays → Uday    ₹2,000
+Srihari → pays → Uday    ₹2,000
+Arun    → pays → Uday    ₹2,000
 ```
 
 ---

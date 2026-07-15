@@ -27,7 +27,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DEFAULT_MEMBERS = ["Alice", "Bob", "Charlie", "David", "Eva"]
+DEFAULT_MEMBERS = ["Uday", "Naveen", "Praveen", "Sandeep", "Srihari", "Arun"]
 
 
 @app.on_event("startup")
@@ -66,9 +66,25 @@ def _filter_by_month(query, model, year, month):
 
 # ── Members ──────────────────────────────────────────────────────────────────
 
+def _member_has_expenses(db: Session, member_name: str) -> bool:
+    return any(
+        db.query(model).filter(model.paid_by == member_name).first()
+        for model in (DailyExpense, FixedExpense, ShoppingExpense)
+    )
+
+
 @app.get("/api/members", response_model=list[schemas.MemberOut])
 def list_members(db: Session = Depends(get_db)):
-    return db.query(Member).all()
+    members = db.query(Member).all()
+    result = []
+    for member in members:
+        result.append({
+            'id': member.id,
+            'name': member.name,
+            'is_active': member.is_active,
+            'can_delete': not _member_has_expenses(db, member.name),
+        })
+    return result
 
 
 @app.post("/api/members", response_model=schemas.MemberOut, status_code=201)
@@ -88,6 +104,8 @@ def delete_member(member_id: int, db: Session = Depends(get_db)):
     member = db.query(Member).filter(Member.id == member_id).first()
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
+    if _member_has_expenses(db, member.name):
+        raise HTTPException(status_code=409, detail="Member has expenses and cannot be deleted")
     member.is_active = False
     db.commit()
 
@@ -277,18 +295,28 @@ def get_dashboard(
     active_members = db.query(Member).filter(Member.is_active == True).all()
     num_members = len(active_members)
     per_person_share = grand_total / num_members if num_members else 0.0
+    daily_share = total_daily / num_members if num_members else 0.0
+    fixed_share = total_fixed / num_members if num_members else 0.0
 
-    paid_daily = paid_by(DailyExpense)
-    paid_fixed = paid_by(FixedExpense)
-    paid_shopping = paid_by(ShoppingExpense)
+    paid_totals: dict = {member.name: 0.0 for member in active_members}
+    daily_totals: dict = {member.name: 0.0 for member in active_members}
+    fixed_totals: dict = {member.name: 0.0 for member in active_members}
+    shopping_totals: dict = {member.name: 0.0 for member in active_members}
 
-    paid_totals: dict = {}
-    for member in active_members:
-        paid_totals[member.name] = (
-            paid_daily.get(member.name, 0.0)
-            + paid_fixed.get(member.name, 0.0)
-            + paid_shopping.get(member.name, 0.0)
-        )
+    def add_payment(exp, totals):
+        if exp.paid_by != 'All' and exp.paid_by in paid_totals:
+            paid_totals[exp.paid_by] += exp.amount
+            totals[exp.paid_by] += exp.amount
+
+    for model, totals in ((DailyExpense, daily_totals), (FixedExpense, fixed_totals), (ShoppingExpense, shopping_totals)):
+        q = db.query(model)
+        if year and mon:
+            q = q.filter(
+                extract('year', model.date) == year,
+                extract('month', model.date) == mon,
+            )
+        for exp in q.all():
+            add_payment(exp, totals)
 
     balances = {name: paid - per_person_share for name, paid in paid_totals.items()}
     settlement_raw = calculate_settlement(balances)
@@ -299,6 +327,15 @@ def get_dashboard(
             paid=round(paid_totals[name], 2),
             share=round(per_person_share, 2),
             balance=round(balances[name], 2),
+            status=(
+                f"Receives ₹{abs(balances[name]):.2f}" if balances[name] > 0
+                else f"Owes ₹{abs(balances[name]):.2f}"
+                if balances[name] < 0
+                else "Settled"
+            ),
+            daily_paid=round(daily_totals[name], 2),
+            fixed_paid=round(fixed_totals[name], 2),
+            shopping_paid=round(shopping_totals[name], 2),
         )
         for name in [m.name for m in active_members]
     ]
@@ -318,6 +355,8 @@ def get_dashboard(
         total_shopping=round(total_shopping, 2),
         grand_total=round(grand_total, 2),
         per_person_share=round(per_person_share, 2),
+        daily_share=round(daily_share, 2),
+        fixed_share=round(fixed_share, 2),
         member_balances=member_balances,
         settlement=settlement,
     )
@@ -394,7 +433,7 @@ def export_excel(
 
     paid_totals = {m.name: 0.0 for m in active_members}
     for exp in [*daily, *fixed, *shopping]:
-        if exp.paid_by in paid_totals:
+        if exp.paid_by != 'All' and exp.paid_by in paid_totals:
             paid_totals[exp.paid_by] += exp.amount
 
     balances = {name: paid - per_person_share for name, paid in paid_totals.items()}

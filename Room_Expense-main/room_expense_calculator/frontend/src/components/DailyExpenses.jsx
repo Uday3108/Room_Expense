@@ -65,9 +65,12 @@ export default function DailyExpenses({ month }) {
   ]
 
   return (
-    <div>
+    <div className="card">
       <div className="section-header">
-        <span className="section-title">Daily / Personal Expenses</span>
+        <div>
+          <span className="section-title">Daily / Personal Expenses</span>
+          <p className="card-sub">Track everyday spend and keep totals easy to scan.</p>
+        </div>
         <button className="btn btn-primary" onClick={() => { setEditItem(null); setShowForm(true) }}>
           + Add Expense
         </button>
@@ -83,7 +86,7 @@ export default function DailyExpenses({ month }) {
           <option value="">All Categories</option>
           {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
-        <span style={{ marginLeft: 'auto', fontWeight: 600, color: 'var(--primary)' }}>
+        <span className="total-summary">
           Total: {fmt(total)}
         </span>
       </div>
