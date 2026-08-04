@@ -67,7 +67,7 @@ export default function FixedExpenses({ month, room, rooms }) {
     { name: 'paid_by', label: 'Paid By', type: 'select', required: true,
       options: paidByOptions },
     { name: 'room', label: 'Room', type: 'select', required: true,
-      options: rooms.map((r) => ({ value: r, label: r })) },
+      options: rooms.filter((r) => r.is_active !== false).map((r) => ({ value: r.name, label: r.name })) },
     { name: 'expense_type', label: 'Expense Type', type: 'select', required: true,
       options: EXPENSE_TYPES.map(t => ({ value: t, label: t })) },
   ]

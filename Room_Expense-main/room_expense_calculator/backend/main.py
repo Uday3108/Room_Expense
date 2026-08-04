@@ -42,7 +42,7 @@ app.add_middleware(
 )
 
 DEFAULT_MEMBERS = ["Uday", "Naveen", "Praveen", "Sandeep", "Srihari", "Arun"]
-DEFAULT_ROOMS = ["Room 1", "Room 2", "Room 3", "Room 4"]
+DEFAULT_ROOMS = ["Room 1"]
 
 
 @app.on_event("startup")
@@ -92,14 +92,20 @@ def _filter_by_room(query, model, room):
 
 @app.get("/api/rooms", response_model=list[schemas.RoomOut])
 def list_rooms(db: Session = Depends(get_db)):
-    return db.query(Room).order_by(Room.name).all()
+    return db.query(Room).filter(Room.is_active == True).order_by(Room.name).all()
 
 
 @app.post("/api/rooms", response_model=schemas.RoomOut, status_code=201)
 def create_room(payload: schemas.RoomCreate, db: Session = Depends(get_db)):
     existing = db.query(Room).filter(Room.name == payload.name).first()
     if existing:
-        raise HTTPException(status_code=409, detail="Room already exists")
+        if existing.is_active:
+            raise HTTPException(status_code=409, detail="Room already exists")
+        existing.is_active = True
+        db.commit()
+        db.refresh(existing)
+        return existing
+
     room = Room(name=payload.name)
     db.add(room)
     db.commit()
@@ -112,7 +118,11 @@ def update_room(room_id: int, payload: schemas.RoomUpdate, db: Session = Depends
     room = db.query(Room).filter(Room.id == room_id).first()
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
-    repeat = db.query(Room).filter(Room.name == payload.name, Room.id != room_id).first()
+    repeat = (
+        db.query(Room)
+        .filter(Room.name == payload.name, Room.id != room_id, Room.is_active == True)
+        .first()
+    )
     if repeat:
         raise HTTPException(status_code=409, detail="Room name already exists")
     room.name = payload.name
@@ -126,13 +136,11 @@ def delete_room(room_id: int, db: Session = Depends(get_db)):
     room = db.query(Room).filter(Room.id == room_id).first()
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
-    exp_exists = any(
-        db.query(model).filter(model.room == room.name).first()
-        for model in (DailyExpense, FixedExpense, ShoppingExpense)
-    )
-    if exp_exists:
-        raise HTTPException(status_code=409, detail="Room has expenses and cannot be deleted")
-    room.is_active = False
+
+    for model in (DailyExpense, FixedExpense, ShoppingExpense):
+        db.query(model).filter(model.room == room.name).delete(synchronize_session=False)
+
+    db.delete(room)
     db.commit()
 
 

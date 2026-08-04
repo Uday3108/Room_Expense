@@ -59,7 +59,7 @@ export default function ShoppingExpenses({ month, room, rooms }) {
     { name: 'paid_by', label: 'Paid By', type: 'select', required: true,
       options: members.filter(m => m.is_active).map(m => ({ value: m.name, label: m.name })) },
     { name: 'room', label: 'Room', type: 'select', required: true,
-      options: rooms.map((r) => ({ value: r, label: r })) },
+      options: rooms.filter((r) => r.is_active !== false).map((r) => ({ value: r.name, label: r.name })) },
     { name: 'store_name', label: 'Store', type: 'select', required: true,
       options: STORES.map(s => ({ value: s, label: s })) },
     { name: 'description', label: 'Description (optional)', type: 'text' },

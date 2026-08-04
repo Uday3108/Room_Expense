@@ -26,9 +26,9 @@ function currentMonth() {
 export default function App() {
   const [tab, setTab] = useState('dashboard')
   const [month, setMonth] = useState(currentMonth())
-  const [theme, setTheme] = useState('dark')
+  const [theme, setTheme] = useState('light')
   const [room, setRoom] = useState('Room 1')
-  const [rooms, setRooms] = useState([{ name: 'Room 1', is_active: true }, { name: 'Room 2', is_active: true }, { name: 'Room 3', is_active: true }, { name: 'Room 4', is_active: true }])
+  const [rooms, setRooms] = useState([{ name: 'Room 1', is_active: true }])
 
   useEffect(() => {
     document.body.classList.remove('light', 'dark')
@@ -45,7 +45,7 @@ export default function App() {
         }
       }
     }).catch(() => {
-      setRooms([{ name: 'Room 1', is_active: true }, { name: 'Room 2', is_active: true }, { name: 'Room 3', is_active: true }, { name: 'Room 4', is_active: true }])
+      setRooms([{ name: 'Room 1', is_active: true }])
     })
   }, [])
 

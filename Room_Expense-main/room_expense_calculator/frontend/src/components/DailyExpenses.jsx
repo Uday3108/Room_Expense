@@ -60,7 +60,7 @@ export default function DailyExpenses({ month, room, rooms }) {
     { name: 'paid_by', label: 'Paid By', type: 'select', required: true,
       options: members.filter(m => m.is_active).map(m => ({ value: m.name, label: m.name })) },
     { name: 'room', label: 'Room', type: 'select', required: true,
-      options: rooms.map((r) => ({ value: r, label: r })) },
+      options: rooms.filter((r) => r.is_active !== false).map((r) => ({ value: r.name, label: r.name })) },
     { name: 'category', label: 'Category', type: 'select', required: true,
       options: CATEGORIES.map(c => ({ value: c, label: c })) },
     { name: 'description', label: 'Description (optional)', type: 'text' },
